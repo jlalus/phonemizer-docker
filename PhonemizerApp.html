@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Strona Prezentująca działanie apliakcji Phonemizer">
+    <meta name="keywords" content="HTML, CSS, JavaScript, jQuery, AJAX">
+    <meta name="author" content="Jakub Lalik">
+    <title>Phonemizer App</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        var wordsArray = []
+        var resAppArray = []
+
+        function getRandomIntInclusive(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getRandomFromDB(lim) {
+            let id_hasla = getRandomIntInclusive(1, 50000)
+
+            $.ajax({
+                url: 'https://test1.wsjp.pl/api/haslo/podglad/' + id_hasla + '/informacje',
+                headers: {
+                    "Accept": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                    "Authorization": "Bearer vjuoDffkWse1gIGpnfhuYdlo4ZxrWB"
+                },
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    if (data) {
+                        wordsArray.push(data.nazwa)
+                        if (wordsArray.length == lim) {
+                            GenerateResponseDB()
+                        }
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    if (xhr.status == 404) {
+                        // console.log("szukaj dalej")
+                        getRandomFromDB(lim)
+                    } else if (xhr.status == 401) {
+                        // console.log("szukaj dalej")
+                        getRandomFromDB(lim)
+                    }
+                }
+
+            });
+        }
+
+        function GenerateResponseDB() {
+            $("#responseDb").html("")
+            $("#responseDb").append("<table>")
+            for (let i = 0; i < wordsArray.length; i++) {
+                $("#responseDb").append("<tr>")
+                $("#responseDb").append("<td>" + wordsArray[i] + "</td>")
+                $("#responseDb").append("</tr>")
+            }
+            $("#responseDb").append("</table>")
+            $("#btSendApp").prop("disabled", false)
+        }
+
+        function GenerateResponseApp(data) {
+            console.log(data)
+            $("#responseDb").html("")
+            $("#responseDb").append("<table>")
+            for (let i = 0; i < data.length; i++) {
+                $("#responseDb").append("<tr>")
+                $("#responseDb").append("<td>" + wordsArray[i] + "</td><td>" + data[i] + "</td>")
+                $("#responseDb").append("</tr>")
+            }
+            $("#responseDb").append("</table>")
+            $("#btSendDb").prop("disabled", false)
+            $("#btSendApp").prop("disabled", true)
+            wordsArray = []
+        }
+
+
+
+        $(document).ready(async function () {
+            $("#btSendDb").prop("disabled", false)
+            $("#btSendApp").prop("disabled", true)
+
+            $("#btSendDb").on('click', function () {
+                $("#btSendDb").prop("disabled", true)
+                let lim = $("#numDb").val()
+                for (let i = 0; i < lim; i++) {
+                    getRandomFromDB(lim)
+                    console.log(i)
+                }
+            })
+
+            $('#btSendApp').on('click', function () {
+
+                $.ajax({
+                    url: 'http://149.156.30.82:5000/post', //replace with HTTP://YOUR_IP_ADRESS:PORT/POST
+                    headers: {
+                        "Content-type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                    },
+                    type: 'POST',
+                    dataType: 'json',
+                    data: '{"text":' + JSON.stringify(wordsArray) + '}',
+                    success: function (res) {
+                        GenerateResponseApp(res['output-text'])
+                        console.log(res)
+                    },
+                });
+            });
+        })
+
+
+
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Bebas Neue';
+            background: #F2FDFF;
+            color: #101935;
+        }
+
+        td {
+            padding-right: 20px;
+            text-align: left;
+        }
+
+        /* #564787 #DBCBD8 #F2FDFF #9AD4D6 #101935  */
+
+        .parent {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 2fr 1fr 1fr 5fr 1fr;
+            grid-template-areas:
+                "header   "
+                "db    "
+                "response    "
+                "app    "
+                "footer   "
+            ;
+            height: 100vh;
+            justify-items: center;
+            align-items: center;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <div class="parent">
+        <div class="header">
+            <h1>Strona prezentująca działanie apliakcji PHONEMIZER </h1>
+            <h2>Wprowadź liczbe losowych fraz które mam pobrać z bazy danych: </h2>
+            <p>Ze względu na duże braki w bazie (nie wszysktie ID są zapełnione/ z dostępem), proces pobierania słów
+                może zająć chwile...</p>
+        </div>
+        <div class="db">
+            <input type="number" value="3" name="num_db" id="numDb" min="1" max="20" style="width: 80px;">
+            <input type="button" id="btSendDb" value="Wyślij do bazy">
+        </div>
+        <div id="app">
+            <input type="button" id="btSendApp" value="Wyślij do Aplikacji">
+        </div>
+        <div id="responseDb" class="responseDb">...</div>
+
+
+        <div class="footer">
+            <p>Strona stworzona jako projekt z przedmiotu Technologia Mowy, na potrzeby zamiany fraz na zapis fonetyczny
+                WSJP - PAN </p>
+            <p>Jakub Lalik, Marek Warzeszka, Maciej Zając - AGH 2022 Kraków</p>
+        </div>
+
+    </div>
+
+
+</body>
+
+</html>
